@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.examples.tutorials.mnist import input_data
 import math
 
-train_rate = 0.001
+train_rate = 0.002
 height = 28
 width = 28
 channel = 1 #mnist is 1 color
@@ -59,14 +59,16 @@ def run(train_set, vali_set, test_set):
 	for epoch in range(1, 301):
 		train_loss = train(train_set)
 		vali_loss = validation(vali_set)
+		print(epoch)
 
-		#print(epoch)
-		#if epoch % 10 == 0:
-		accuracy = test(test_set)
-		print("epoch : ", epoch, " train_loss : ", train_loss, " vali_loss : ", vali_loss, " accuracy : ", accuracy)
+		if epoch % 2 == 0:
+			accuracy = test(test_set)
+			print("epoch : ", epoch, " train_loss : ", train_loss, " vali_loss : ", vali_loss, " accuracy : ", accuracy)
 
-		summary = sess.run(merged, {train_loss_tensorboard:train_loss, vali_loss_tensorboard:vali_loss, test_accuracy_tensorboard:accuracy})
-		writer.add_summary(summary, epoch)
+			summary = sess.run(merged, {train_loss_tensorboard:train_loss, vali_loss_tensorboard:vali_loss, test_accuracy_tensorboard:accuracy})
+			writer.add_summary(summary, epoch)
+			save_path = saver.save(sess, './saver/'+str(epoch)+".ckpt")
+		
 		
 
 with tf.device('/gpu:0'):
@@ -81,21 +83,21 @@ with tf.device('/gpu:0'):
 
 	#filter_height, filter_width, input, output
 	W1 = tf.get_variable('w1', shape = [3, 3, 1, 32], initializer=tf.contrib.layers.xavier_initializer())
-	bias1 = tf.Variable(tf.constant(1.0, shape = [32]))
+	bias1 = tf.Variable(tf.constant(0.0, shape = [32]))
 	layer1 = tf.nn.conv2d(X_reshape, W1, strides=[1, 1, 1, 1], padding='SAME') #stride = [1, value, value, 1]
 	relu_layer1 = tf.nn.relu(layer1 + bias1)
 	pool_layer1 = tf.nn.max_pool(relu_layer1, ksize = [1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 	drop_layer1 = tf.nn.dropout(pool_layer1, keep_prob = keep_prob)
 
 	W2 = tf.get_variable('w2', shape = [3, 3, 32, 64], initializer=tf.contrib.layers.xavier_initializer())
-	bias2 = tf.Variable(tf.constant(1.0, shape = [64]))
+	bias2 = tf.Variable(tf.constant(0.0, shape = [64]))
 	layer2 = tf.nn.conv2d(drop_layer1, W2, strides=[1, 1, 1, 1], padding='SAME') #stride = [1, value, value, 1]
 	relu_layer2 = tf.nn.relu(layer2 + bias2)
 	pool_layer2 = tf.nn.max_pool(relu_layer2, ksize = [1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 	drop_layer2 = tf.nn.dropout(pool_layer2, keep_prob = keep_prob)
 
 	W3 = tf.get_variable('w3', shape = [3, 3, 64, 128], initializer=tf.contrib.layers.xavier_initializer())
-	bias3 = tf.Variable(tf.constant(1.0, shape = [128]))
+	bias3 = tf.Variable(tf.constant(0.0, shape = [128]))
 	layer3 = tf.nn.conv2d(drop_layer2, W3, strides=[1, 1, 1, 1], padding='SAME') #stride = [1, value, value, 1]
 	relu_layer3 = tf.nn.relu(layer3 + bias3)
 	pool_layer3 = tf.nn.max_pool(relu_layer3, ksize = [1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
@@ -104,7 +106,7 @@ with tf.device('/gpu:0'):
 	flat = tf.layers.flatten(drop_layer3) # batch 보존한 상태로 평평하게 펴줌. ==>shape =  batch, 2048
 	flat_size = flat.get_shape()[-1] # 2048
 	W4 = tf.get_variable('w4', shape = [flat_size, 10], initializer=tf.contrib.layers.xavier_initializer())
-	bias4 = tf.Variable(tf.constant(1.0, shape = [10]))
+	bias4 = tf.Variable(tf.constant(0.0, shape = [10]))
 	output = tf.matmul(flat, W4) + bias4
 
 	cross_entropy = tf.reduce_mean( tf.nn.softmax_cross_entropy_with_logits(labels = Y, logits = output) )	
@@ -117,6 +119,7 @@ with tf.device('/gpu:0'):
 
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
+saver = tf.train.Saver(max_to_keep=10000)
 
 #텐서보드 실행 tensorboard --logdir=./tensorboard/. # 띄어쓰기 조심. logdir부터 쭉 다 붙여써야함.
 train_loss_tensorboard = tf.placeholder(tf.float32)
